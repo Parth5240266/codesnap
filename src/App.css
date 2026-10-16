@@ -1,0 +1,55 @@
+:root {
+  --bg: #1e1f26;
+  --panel: #262833;
+  --fg: #d8dbe6;
+  --muted: #7d8196;
+  --accent: #4f9cf9;
+  --font: 14px/21px ui-monospace, 'Fira Code', Menlo, Consolas, monospace;
+}
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+.toolbar, .findbar, .status { background: var(--panel); padding: 6px 12px; }
+.toolbar { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #000; }
+.brand { color: var(--accent); }
+.room { color: var(--muted); font-family: monospace; }
+.sep { flex: 1; }
+button {
+  background: #343748; color: var(--fg); border: 1px solid #44485e;
+  border-radius: 4px; padding: 4px 10px; cursor: pointer;
+}
+button:hover:not(:disabled) { background: #40445a; }
+button:disabled { opacity: .4; cursor: default; }
+
+.findbar { display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid #000; }
+.findbar .row { display: flex; align-items: center; gap: 6px; }
+.findbar input[type='text'], .findbar input:not([type]) {
+  width: 260px; background: var(--bg); color: var(--fg);
+  border: 1px solid #44485e; border-radius: 4px; padding: 4px 8px;
+}
+.count { color: var(--muted); font-size: 12px; min-width: 70px; }
+.findbar label { color: var(--muted); font-size: 13px; display: flex; gap: 3px; align-items: center; }
+
+.editor { flex: 1; display: flex; min-height: 0; }
+.gutter {
+  font: var(--font); color: var(--muted); text-align: right; padding: 8px 10px 8px 12px;
+  overflow: hidden; user-select: none; background: var(--panel); min-width: 28px;
+}
+.gutter .active { color: var(--fg); }
+.pane { position: relative; flex: 1; min-width: 0; }
+.backdrop, textarea {
+  position: absolute; inset: 0; margin: 0; padding: 8px 12px; box-sizing: border-box;
+  font: var(--font); tab-size: 2; white-space: pre; overflow: auto;
+  border: 0; outline: 0; word-wrap: normal;
+}
+.backdrop { color: transparent; pointer-events: none; overflow: hidden; }
+.backdrop mark { background: #6b5b1f; color: transparent; border-radius: 2px; }
+.backdrop mark.current { background: #c7821d; }
+textarea { background: transparent; color: var(--fg); resize: none; caret-color: var(--accent); }
+textarea::selection { background: #3b5a8f; }
+.status { font-size: 12px; color: var(--muted); border-top: 1px solid #000; }
+.tagline { color: var(--muted); font-size: 12px; }
+.live { font-size: 12px; }
+.live.online { color: #4ade80; }
+.live.offline { color: #f87171; }
