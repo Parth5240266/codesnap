@@ -10,6 +10,8 @@ GetCodeSnap is a shared code pad that runs in the browser. Open a page, paste or
 - **Live sync**: edits reach everyone in the room over WebSockets. The toolbar shows how many people are online.
 - **Rooms are saved**: the server stores room text in `rooms.json`, and your browser also keeps a copy in `localStorage`.
 - **Editor tools**: line numbers, find & replace (with a case-sensitive option), select line, move line up/down, and Tab to indent.
+- **Download**: the **Download** button saves the current text as a `.txt` file named after the room.
+- **Light & dark theme**: switch with the ☀ / ☾ button in the toolbar. It starts from your system setting and remembers your choice.
 - **Auto-reconnect**: if the connection drops, the app keeps trying to reconnect.
 
 ## How to use
@@ -18,7 +20,8 @@ GetCodeSnap is a shared code pad that runs in the browser. Open a page, paste or
 2. Type or paste your code into the editor.
 3. Click **Copy link** and send the link to anyone you want to share with.
 4. Everyone who opens that link edits the same text together.
-5. Click **New** to start a fresh room.
+5. Click **Download** to save the code as a `.txt` file.
+6. Click **New** to start a fresh room.
 
 To get a room with an easy name, type it into the URL yourself, for example `https://your-site.com/interview-42`.
 

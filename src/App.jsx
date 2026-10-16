@@ -55,6 +55,7 @@ export default function App() {
   const [current, setCurrent] = useState(0)
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [copied, setCopied] = useState(false)
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark')
 
   const taRef = useRef(null)
   const backdropRef = useRef(null)
@@ -79,6 +80,15 @@ export default function App() {
       /* ignore */
     }
   }, [room, text])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem('getcodesnap:theme', theme)
+    } catch {
+      /* ignore */
+    }
+  }, [theme])
 
   // Apply someone else's text while keeping the local caret/selection in place.
   const applyRemote = useCallback((next) => {
@@ -311,6 +321,16 @@ export default function App() {
     }
   }
 
+  // Save the current text as <room>.txt
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${room.replace(/[^\w.-]+/g, '_') || 'getcodesnap'}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const newRoom = () => {
     window.location.assign(`/${randomRoom()}`)
   }
@@ -346,11 +366,18 @@ export default function App() {
         </span>
         <button onClick={copyLink}>{copied ? 'Copied!' : 'Copy link'}</button>
         <button onClick={newRoom}>New</button>
+        <button onClick={download} title="Download as .txt">Download</button>
         <span className="sep" />
         <button onClick={openFind} title="Ctrl+F">Find / Replace</button>
         <button onClick={selectLine} title="Ctrl+L">Select line</button>
         <button onClick={() => moveLine(-1)} title="Alt+↑">Line ↑</button>
         <button onClick={() => moveLine(1)} title="Alt+↓">Line ↓</button>
+        <button
+          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+        </button>
       </header>
 
       {findOpen && (
