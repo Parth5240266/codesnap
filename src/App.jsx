@@ -338,7 +338,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="toolbar">
-        <strong className="brand">CodeSnap</strong>
+        <strong className="brand">GetCodeSnap</strong>
         <span className="tagline">Capture. Share. Code.</span>
         <span className="room">/{room}</span>
         <span className={`live ${status}`}>

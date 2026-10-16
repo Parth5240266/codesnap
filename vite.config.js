@@ -4,7 +4,7 @@ import { attachRoomServer } from './server/rooms.js'
 
 // Runs the room relay inside `vite` / `vite preview` so one command is enough.
 const rooms = () => ({
-  name: 'codesnap-rooms',
+  name: 'getcodesnap-rooms',
   configureServer: (s) => attachRoomServer(s.httpServer),
   configurePreviewServer: (s) => attachRoomServer(s.httpServer),
 })

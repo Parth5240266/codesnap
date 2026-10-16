@@ -21,4 +21,4 @@ const server = http.createServer((req, res) => {
 
 attachRoomServer(server)
 const port = process.env.PORT || 3000
-server.listen(port, () => console.log(`CodeSnap on http://localhost:${port}`))
+server.listen(port, () => console.log(`GetCodeSnap on http://localhost:${port}`))

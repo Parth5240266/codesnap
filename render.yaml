@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: codesnap
+    name: getcodesnap
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
