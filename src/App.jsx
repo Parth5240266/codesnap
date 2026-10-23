@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import logoDark from './assets/logo-dark.png'
+import logoLight from './assets/logo-light.png'
+import FilesPanel from './Files.jsx'
+import { LockIcon, LockPopover, LockScreen } from './Lock.jsx'
 import './App.css'
 
 // ---- room / sync -----------------------------------------------------------
@@ -22,6 +26,33 @@ function loadText(room) {
     return ''
   }
 }
+
+// Private rooms are never cached in the browser.
+function forgetText(room) {
+  try {
+    localStorage.removeItem(storageKey(room))
+    localStorage.removeItem(`getcodesnap:token:${room}`) // left by older versions
+  } catch {
+    /* ignore */
+  }
+}
+
+// Passkey calls. The server answers with an HttpOnly cookie that page scripts can't read.
+async function postAuth(action, body) {
+  try {
+    const res = await fetch(`/api/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return res.ok ? null : (await res.json()).error || 'Something went wrong'
+  } catch {
+    return 'Could not reach the server'
+  }
+}
+
+// Identifies this tab's socket to the passkey calls.
+const newCid = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
 
 // ---- text helpers ----------------------------------------------------------
 function findMatches(text, query, caseSensitive) {
@@ -65,6 +96,26 @@ export default function App() {
   const pendingSel = useRef(null)
   const [status, setStatus] = useState('offline')
   const [users, setUsers] = useState(0)
+  const [files, setFiles] = useState([])
+  const [filesOpen, setFilesOpen] = useState(false)
+  const cidRef = useRef('')
+  const [locked, setLocked] = useState(false) // room has a passkey
+  const [needAuth, setNeedAuth] = useState(false) // we haven't entered it yet
+  const [authError, setAuthError] = useState('')
+  const [lockOpen, setLockOpen] = useState(false)
+
+  // Close Find / Replace, Files and the lock popover on a click outside them (toolbar buttons toggle them).
+  useEffect(() => {
+    if (!findOpen && !filesOpen && !lockOpen) return
+    const onDown = (e) => {
+      if (e.target.closest('.toolbar')) return
+      if (!e.target.closest('.findbar')) setFindOpen(false)
+      if (!e.target.closest('.files')) setFilesOpen(false)
+      if (!e.target.closest('.lockpop')) setLockOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [findOpen, filesOpen, lockOpen])
 
   const matches = useMemo(
     () => findMatches(text, query, caseSensitive),
@@ -72,14 +123,15 @@ export default function App() {
   )
   const activeIdx = matches.length ? Math.min(current, matches.length - 1) : -1
 
-  // Persist + broadcast to other tabs on the same room
+  // Keep a local copy of open rooms only; private ones stay off the disk.
   useEffect(() => {
+    if (locked) return forgetText(room)
     try {
       localStorage.setItem(storageKey(room), text)
     } catch {
       /* ignore */
     }
-  }, [room, text])
+  }, [room, text, locked])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -116,13 +168,33 @@ export default function App() {
     let closed = false
     const connect = () => {
       const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-      ws = new WebSocket(`${proto}://${window.location.host}/ws?room=${encodeURIComponent(room)}`)
+      // The access cookie (if any) is sent with the upgrade request automatically.
+      cidRef.current = newCid()
+      const q = new URLSearchParams({ room, cid: cidRef.current })
+      ws = new WebSocket(`${proto}://${window.location.host}/ws?${q}`)
       socketRef.current = ws
       ws.onopen = () => setStatus('online')
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data)
         if (msg.type === 'users') return setUsers(msg.count)
+        if (msg.type === 'files') return setFiles(msg.files)
+        if (msg.type === 'lock') return setLocked(msg.locked)
+        if (msg.type === 'locked') {
+          // Private room: drop anything we cached and ask for the passkey.
+          forgetText(room)
+          setLocked(true)
+          setNeedAuth(true)
+          setFiles([])
+          setFilesOpen(false)
+          setText('')
+          return
+        }
         if (msg.type === 'init') {
+          setNeedAuth(false)
+          setAuthError('')
+          setLocked(msg.locked)
+          setFiles(msg.files)
+          if (msg.files.length) setFilesOpen(true)
           // Server copy wins, unless the room is new and we have local text to seed it with.
           if (msg.text === '' && taRef.current.value) {
             ws.send(JSON.stringify({ type: 'text', text: taRef.current.value }))
@@ -144,6 +216,23 @@ export default function App() {
       ws.close()
     }
   }, [room, applyRemote])
+
+  const sendMsg = (msg) => {
+    const ws = socketRef.current
+    if (ws?.readyState === 1) ws.send(JSON.stringify(msg))
+  }
+
+  // On success the server signs this tab's socket in and sends 'init'.
+  const unlock = async (passkey, remember) => {
+    setAuthError((await postAuth('auth', { room, passkey, remember, cid: cidRef.current })) || '')
+  }
+
+  const lock = (passkey, remember) => postAuth('lock', { room, passkey, remember, cid: cidRef.current })
+
+  const signOut = async () => {
+    await postAuth('logout', { room })
+    window.location.reload()
+  }
 
   useLayoutEffect(() => {
     if (!pendingSel.current) return
@@ -358,27 +447,65 @@ export default function App() {
   return (
     <div className="app">
       <header className="toolbar">
-        <strong className="brand">GetCodeSnap</strong>
-        <span className="tagline">Capture. Share. Code.</span>
-        <span className="room">/{room}</span>
-        <span className={`live ${status}`}>
-          ● {status === 'online' ? `${users} online` : 'offline'}
-        </span>
-        <button onClick={copyLink}>{copied ? 'Copied!' : 'Copy link'}</button>
-        <button onClick={newRoom}>New</button>
-        <button onClick={download} title="Download as .txt">Download</button>
-        <span className="sep" />
-        <button onClick={openFind} title="Ctrl+F">Find / Replace</button>
-        <button onClick={selectLine} title="Ctrl+L">Select line</button>
-        <button onClick={() => moveLine(-1)} title="Alt+↑">Line ↑</button>
-        <button onClick={() => moveLine(1)} title="Alt+↓">Line ↓</button>
+        <div className="brand">
+          <img className="logo for-dark" src={logoDark} alt="GetCodeSnap" />
+          <img className="logo for-light" src={logoLight} alt="GetCodeSnap" />
+          <span className="tagline">Capture. Share. Code.</span>
+        </div>
+        <div className="roomchip" title="Your room. Share this link.">
+          <span className="room">/{room}</span>
+          <span className={`live ${status}`}>
+            <i /> {status === 'online' ? `${users} online` : 'offline'}
+          </span>
+        </div>
+        <button className="primary" onClick={copyLink}>{copied ? '✓ Copied!' : 'Copy link'}</button>
         <button
-          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          className={filesOpen ? 'active' : ''}
+          onClick={() => setFilesOpen((o) => !o)}
+          title="Share images, PDFs and other files"
         >
-          {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+          Files{files.length ? <span className="pill">{files.length}</span> : null}
         </button>
+        <button
+          className={lockOpen || locked ? 'active' : ''}
+          onClick={() => setLockOpen((o) => !o)}
+          disabled={needAuth}
+          title={locked ? 'This page is private' : 'Protect this page with a passkey'}
+        >
+          <LockIcon open={!locked} /> {locked ? 'Private' : 'Lock'}
+        </button>
+        <span className="sep" />
+        <div className="group edit-tools">
+          <button onClick={openFind} title="Find / Replace (Ctrl+F)">Find</button>
+          <button onClick={() => moveLine(-1)} title="Move line up (Alt+↑)">↑</button>
+          <button onClick={() => moveLine(1)} title="Move line down (Alt+↓)">↓</button>
+        </div>
+        <div className="group">
+          <button onClick={download} title="Download as .txt">⤓</button>
+          <button onClick={newRoom} title="New room">＋</button>
+          <button
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
+        </div>
       </header>
+
+      {lockOpen && !needAuth && (
+        <LockPopover
+          key={locked}
+          locked={locked}
+          onLock={lock}
+          onUnlock={() => {
+            sendMsg({ type: 'unlock' })
+            setLockOpen(false)
+          }}
+          onSignOut={signOut}
+        />
+      )}
+
+      {needAuth && <LockScreen room={room} error={authError} onSubmit={unlock} onNewRoom={newRoom} />}
 
       {findOpen && (
         <div className="findbar">
@@ -437,6 +564,7 @@ export default function App() {
             value={text}
             spellCheck={false}
             autoFocus
+            readOnly={needAuth}
             wrap="off"
             placeholder="Start typing or paste code here…"
             onChange={(e) => onChange(e.target.value)}
@@ -447,6 +575,7 @@ export default function App() {
             onScroll={syncScroll}
           />
         </div>
+        {filesOpen && <FilesPanel room={room} files={files} />}
       </div>
 
       <footer className="status">

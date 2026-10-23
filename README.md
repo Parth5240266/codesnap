@@ -10,6 +10,8 @@ GetCodeSnap is a shared code pad that runs in the browser. Open a page, paste or
 - **Live sync**: edits reach everyone in the room over WebSockets. The toolbar shows how many people are online.
 - **Rooms are saved**: the server stores room text in `rooms.json`, and your browser also keeps a copy in `localStorage`.
 - **Editor tools**: line numbers, find & replace (with a case-sensitive option), select line, move line up/down, and Tab to indent.
+- **File sharing**: click **Files** to upload images, PDFs or any file (up to 50 MB) to the room. You choose how long each file stays: 10 minutes, 1 hour, 1 day, 7 days or 30 days. After that, it is deleted. Uploads are stored in `uploads/` inside `DATA_DIR`.
+- **Private pages**: click **Lock** to protect a page with a passkey. Anyone who opens it then has to enter the passkey before they see the text or files. The server keeps only a salted scrypt hash. Access is kept in an HttpOnly, SameSite=Strict cookie (Secure on HTTPS), so page scripts can never read it, and private pages are never cached in the browser. Tick "Remember this device" to stay signed in for 30 days; otherwise access ends when the browser closes. After 10 wrong attempts from the same IP, that IP is blocked for 15 minutes. Changing the passkey signs everyone else out. A forgotten passkey can't be recovered.
 - **Download**: the **Download** button saves the current text as a `.txt` file named after the room.
 - **Light & dark theme**: switch with the ☀ / ☾ button in the toolbar. It starts from your system setting and remembers your choice.
 - **Auto-reconnect**: if the connection drops, the app keeps trying to reconnect.
@@ -25,7 +27,7 @@ GetCodeSnap is a shared code pad that runs in the browser. Open a page, paste or
 
 To get a room with an easy name, type it into the URL yourself, for example `https://your-site.com/interview-42`.
 
-> Anyone with the link can read and edit a room. Don't paste secrets such as passwords or API keys.
+> Anyone with the link can read and edit a room unless it is locked with a passkey. Even then, avoid pasting secrets such as passwords or API keys.
 
 ### Keyboard shortcuts
 

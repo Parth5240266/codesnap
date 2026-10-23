@@ -1,12 +1,16 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { attachRoomServer } from './server/rooms.js'
+import { attachRoomServer, handleApiRequest } from './server/rooms.js'
 
-// Runs the room relay inside `vite` / `vite preview` so one command is enough.
+// Runs the room relay and file API inside `vite` / `vite preview` so one command is enough.
+const attach = (s) => {
+  attachRoomServer(s.httpServer)
+  s.middlewares.use((req, res, next) => handleApiRequest(req, res) || next())
+}
 const rooms = () => ({
   name: 'getcodesnap-rooms',
-  configureServer: (s) => attachRoomServer(s.httpServer),
-  configurePreviewServer: (s) => attachRoomServer(s.httpServer),
+  configureServer: attach,
+  configurePreviewServer: attach,
 })
 
 // https://vite.dev/config/

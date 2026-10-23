@@ -4,12 +4,13 @@ import process from 'node:process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { attachRoomServer } from './rooms.js'
+import { attachRoomServer, handleApiRequest } from './rooms.js'
 
 const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '../dist')
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' }
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' }
 
 const server = http.createServer((req, res) => {
+  if (handleApiRequest(req, res)) return
   const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname)
   let file = path.join(dist, path.normalize(urlPath))
   if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
